@@ -1,0 +1,1093 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>天气分析系统 - 数据仪表盘</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --bg-color: #f0f4f8;
+            --card-bg: white;
+            --text-primary: #2d3748;
+            --text-secondary: #718096;
+            --border-color: #e2e8f0;
+            --shadow-sm: 0 2px 8px rgba(0,0,0,0.06);
+            --shadow-md: 0 4px 16px rgba(0,0,0,0.08);
+            --shadow-lg: 0 8px 32px rgba(0,0,0,0.12);
+            --transition-fast: 0.2s ease;
+            --transition-normal: 0.3s ease;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg-color);
+            min-height: 100vh;
+            color: var(--text-primary);
+        }
+        .header {
+            background: var(--primary-gradient);
+            color: white;
+            padding: 24px 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: var(--shadow-md);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .header h1 {
+            font-size: 24px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .header .logo-icon {
+            font-size: 28px;
+            animation: pulse 2s ease-in-out infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        .header .user-info {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        .header .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+        .header .btn-logout {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            padding: 10px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all var(--transition-normal);
+            font-size: 14px;
+            font-weight: 500;
+        }
+        .header .btn-logout:hover {
+            background: rgba(255,255,255,0.3);
+            transform: translateY(-1px);
+        }
+        .container {
+            padding: 32px;
+            max-width: 1500px;
+            margin: 0 auto;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+        .stat-card {
+            background: var(--card-bg);
+            border-radius: 20px;
+            padding: 28px;
+            box-shadow: var(--shadow-sm);
+            transition: all var(--transition-normal);
+            position: relative;
+            overflow: hidden;
+        }
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: var(--primary-gradient);
+        }
+        .stat-card:hover {
+            transform: translateY(-8px);
+            box-shadow: var(--shadow-lg);
+        }
+        .stat-card .icon-wrapper {
+            width: 56px;
+            height: 56px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 16px;
+            font-size: 28px;
+            background: linear-gradient(135deg, rgba(102,126,234,0.1) 0%, rgba(118,75,162,0.1) 100%);
+        }
+        .stat-card .value {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+        .stat-card .label {
+            color: var(--text-secondary);
+            font-size: 14px;
+            font-weight: 500;
+        }
+        .stat-card .trend {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            margin-top: 8px;
+            font-size: 12px;
+        }
+        .stat-card .trend.up { color: #48bb78; }
+        .stat-card .trend.down { color: #f56565; }
+        .search-section {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: var(--shadow-sm);
+            margin-bottom: 24px;
+        }
+        .search-bar {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .search-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #f7fafc;
+            border-radius: 12px;
+            padding: 0 16px;
+            border: 2px solid transparent;
+            transition: all var(--transition-fast);
+        }
+        .search-group:focus-within {
+            border-color: #667eea;
+            background: white;
+        }
+        .search-group .icon {
+            color: var(--text-secondary);
+            font-size: 16px;
+        }
+        .search-group input, .search-group select {
+            padding: 14px 16px;
+            border: none;
+            background: transparent;
+            font-size: 15px;
+            outline: none;
+            min-width: 180px;
+        }
+        .search-group select {
+            cursor: pointer;
+            min-width: 160px;
+        }
+        .btn-search {
+            background: var(--primary-gradient);
+            color: white;
+            border: none;
+            padding: 14px 32px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 15px;
+            transition: all var(--transition-normal);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn-search:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(102,126,234,0.4);
+        }
+        .btn-search:active {
+            transform: translateY(0);
+        }
+        .btn-reset {
+            background: #edf2f7;
+            color: var(--text-secondary);
+            border: none;
+            padding: 14px 24px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 15px;
+            transition: all var(--transition-fast);
+        }
+        .btn-reset:hover {
+            background: #e2e8f0;
+        }
+        .btn-import, .btn-export, .btn-clean {
+            padding: 12px 20px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 14px;
+            border: none;
+            transition: all var(--transition-fast);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn-import {
+            background: #48bb78;
+            color: white;
+        }
+        .btn-import:hover {
+            background: #38a169;
+            transform: translateY(-2px);
+        }
+        .btn-export {
+            background: #4299e1;
+            color: white;
+        }
+        .btn-export:hover {
+            background: #3182ce;
+            transform: translateY(-2px);
+        }
+        .btn-clean {
+            background: #ed8936;
+            color: white;
+        }
+        .btn-clean:hover {
+            background: #dd6b20;
+            transform: translateY(-2px);
+        }
+        .file-upload {
+            display: none;
+        }
+        .upload-label {
+            padding: 12px 20px;
+            background: #48bb78;
+            color: white;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 14px;
+            transition: all var(--transition-fast);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .upload-label:hover {
+            background: #38a169;
+            transform: translateY(-2px);
+        }
+        .action-bar {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-overlay.show {
+            display: flex;
+        }
+        .modal {
+            background: white;
+            border-radius: 20px;
+            padding: 32px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: var(--shadow-lg);
+            animation: modalFadeIn 0.3s ease-out;
+        }
+        @keyframes modalFadeIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+        .modal-header h3 {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        .modal-close {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: none;
+            background: #f7fafc;
+            cursor: pointer;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-secondary);
+        }
+        .modal-close:hover {
+            background: #edf2f7;
+        }
+        .modal-body {
+            margin-bottom: 24px;
+        }
+        .modal-body p {
+            color: var(--text-secondary);
+            margin-bottom: 16px;
+            line-height: 1.6;
+        }
+        .cleaning-stats {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .cleaning-stat-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .cleaning-stat-item:last-child {
+            border-bottom: none;
+        }
+        .cleaning-stat-item .label {
+            color: var(--text-secondary);
+        }
+        .cleaning-stat-item .value {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        .cleaning-stat-item .value.warning {
+            color: #ed8936;
+        }
+        .cleaning-stat-item .value.danger {
+            color: #f56565;
+        }
+        .cleaning-stat-item .value.success {
+            color: #48bb78;
+        }
+        .modal-footer {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+        }
+        .btn-modal {
+            padding: 12px 24px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 14px;
+            border: none;
+            transition: all var(--transition-fast);
+        }
+        .btn-modal.primary {
+            background: var(--primary-gradient);
+            color: white;
+        }
+        .btn-modal.primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(102,126,234,0.4);
+        }
+        .btn-modal.secondary {
+            background: #edf2f7;
+            color: var(--text-secondary);
+        }
+        .btn-modal.secondary:hover {
+            background: #e2e8f0;
+        }
+        .toast {
+            position: fixed;
+            bottom: 32px;
+            right: 32px;
+            background: var(--text-primary);
+            color: white;
+            padding: 16px 24px;
+            border-radius: 12px;
+            box-shadow: var(--shadow-lg);
+            display: none;
+            align-items: center;
+            gap: 12px;
+            z-index: 2000;
+            animation: toastSlideIn 0.3s ease-out;
+        }
+        .toast.show {
+            display: flex;
+        }
+        .toast.success {
+            background: #48bb78;
+        }
+        .toast.error {
+            background: #f56565;
+        }
+        .toast.warning {
+            background: #ed8936;
+        }
+        @keyframes toastSlideIn {
+            from { opacity: 0; transform: translateX(100px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        .table-container {
+            background: var(--card-bg);
+            border-radius: 20px;
+            box-shadow: var(--shadow-sm);
+            overflow: hidden;
+        }
+        .table-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .table-header h2 {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        .table-header .results {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+        .table-wrapper {
+            overflow-x: auto;
+        }
+        .table-container table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 900px;
+        }
+        .table-container th {
+            padding: 18px 24px;
+            text-align: left;
+            background: #f8fafc;
+            font-weight: 600;
+            color: var(--text-secondary);
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            position: sticky;
+            top: 72px;
+            z-index: 10;
+        }
+        .table-container th:first-child { border-radius: 20px 0 0 0; }
+        .table-container th:last-child { border-radius: 0 20px 0 0; }
+        .table-container td {
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 14px;
+            color: var(--text-primary);
+            transition: background var(--transition-fast);
+        }
+        .table-container tbody tr:hover {
+            background: #fafcff;
+        }
+        .table-container tbody tr:last-child td:first-child { border-radius: 0 0 0 20px; }
+        .table-container tbody tr:last-child td:last-child { border-radius: 0 0 20px 0; }
+        .weather-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+        .weather-sunny { 
+            background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%); 
+            color: #f57c00; 
+        }
+        .weather-cloudy { 
+            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%); 
+            color: #1976d2; 
+        }
+        .weather-rainy { 
+            background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%); 
+            color: #388e3c; 
+        }
+        .weather-storm { 
+            background: linear-gradient(135deg, #fce4ec 0%, #f8bbd9 100%); 
+            color: #c2185b; 
+        }
+        .weather-snow { 
+            background: linear-gradient(135deg, #e0f2f1 0%, #b2dfdb 100%); 
+            color: #00897b; 
+        }
+        .temp-high { color: #f56565; font-weight: 600; }
+        .temp-low { color: #4299e1; font-weight: 600; }
+        .temp-normal { color: #48bb78; font-weight: 600; }
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            padding: 24px;
+        }
+        .pagination button {
+            min-width: 44px;
+            height: 44px;
+            border: 2px solid var(--border-color);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            font-size: 15px;
+            font-weight: 500;
+            background: transparent;
+            color: var(--text-secondary);
+        }
+        .pagination button:hover:not(.active):not(:disabled) {
+            border-color: #667eea;
+            color: #667eea;
+        }
+        .pagination button.active {
+            background: var(--primary-gradient);
+            border-color: #667eea;
+            color: white;
+        }
+        .pagination button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .pagination .dots {
+            border: none;
+            padding: 0 8px;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-secondary);
+        }
+        .empty-state .icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+        .empty-state h3 {
+            font-size: 18px;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+        }
+        .empty-state p {
+            font-size: 14px;
+        }
+        @media (max-width: 768px) {
+            .header {
+                padding: 16px 20px;
+            }
+            .header h1 {
+                font-size: 18px;
+            }
+            .header .btn-logout {
+                padding: 8px 16px;
+                font-size: 13px;
+            }
+            .container {
+                padding: 20px 16px;
+            }
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 16px;
+            }
+            .stat-card {
+                padding: 20px;
+            }
+            .stat-card .value {
+                font-size: 24px;
+            }
+            .search-bar {
+                flex-direction: column;
+            }
+            .search-group {
+                width: 100%;
+            }
+            .search-group input, .search-group select {
+                width: 100%;
+                min-width: auto;
+            }
+            .btn-search, .btn-reset {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1><span class="logo-icon">🌤️</span>天气分析系统</h1>
+        <div class="user-info">
+            <div class="user-avatar">👤</div>
+            <span>管理员</span>
+            <button class="btn-logout" onclick="location.href='index.html'">退出登录</button>
+        </div>
+    </div>
+    <div class="container">
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="icon-wrapper">📊</div>
+                <div class="value">42</div>
+                <div class="label">总记录数</div>
+                <div class="trend up">↑ 本周新增5条</div>
+            </div>
+            <div class="stat-card">
+                <div class="icon-wrapper">🌡️</div>
+                <div class="value">22.4°C</div>
+                <div class="label">平均气温</div>
+                <div class="trend up">↑ 较上周 +1.2°C</div>
+            </div>
+            <div class="stat-card">
+                <div class="icon-wrapper">💧</div>
+                <div class="value">72%</div>
+                <div class="label">平均湿度</div>
+                <div class="trend down">↓ 较上周 -3%</div>
+            </div>
+            <div class="stat-card">
+                <div class="icon-wrapper">🌧️</div>
+                <div class="value">7.2mm</div>
+                <div class="label">平均降雨量</div>
+                <div class="trend up">↑ 较上周 +2.1mm</div>
+            </div>
+        </div>
+        <div class="search-section">
+            <div class="search-bar">
+                <div class="search-group">
+                    <span class="icon">🔍</span>
+                    <input type="text" id="searchCity" placeholder="搜索城市...">
+                </div>
+                <div class="search-group">
+                    <span class="icon">🌤️</span>
+                    <select id="filterWeather">
+                        <option value="">全部天气类型</option>
+                        <option value="晴">☀️ 晴</option>
+                        <option value="多云">☁️ 多云</option>
+                        <option value="小雨">🌧️ 小雨</option>
+                        <option value="中雨">🌦️ 中雨</option>
+                        <option value="大雨">⛈️ 大雨</option>
+                        <option value="暴雨">🌩️ 暴雨</option>
+                        <option value="特大暴雨">🌪️ 特大暴雨</option>
+                        <option value="小雪">❄️ 小雪</option>
+                    </select>
+                </div>
+                <div class="search-group">
+                    <span class="icon">📅</span>
+                    <select id="filterSeason">
+                        <option value="">全季节</option>
+                        <option value="春">🌸 春季 (3-5月)</option>
+                        <option value="夏">☀️ 夏季 (6-8月)</option>
+                        <option value="秋">🍂 秋季 (9-11月)</option>
+                        <option value="冬">❄️ 冬季 (12-2月)</option>
+                    </select>
+                </div>
+                <button class="btn-search" onclick="filterData()">
+                    <span>🔍</span> 筛选
+                </button>
+                <button class="btn-reset" onclick="resetFilters()">重置</button>
+            </div>
+            <div class="action-bar" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #e2e8f0;">
+                <input type="file" id="csvFile" class="file-upload" accept=".csv">
+                <label for="csvFile" class="upload-label">
+                    <span>📥</span> 导入CSV
+                </label>
+                <button class="btn-export" onclick="exportToCSV()">
+                    <span>📤</span> 导出CSV
+                </button>
+                <button class="btn-clean" onclick="showCleaningModal()">
+                    <span>🧹</span> 数据清洗
+                </button>
+            </div>
+        </div>
+        <div class="table-container">
+            <div class="table-header">
+                <h2>天气数据列表</h2>
+                <span class="results" id="resultCount">共 42 条记录</span>
+            </div>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>城市</th>
+                            <th>日期</th>
+                            <th>气温(°C)</th>
+                            <th>湿度(%)</th>
+                            <th>降雨量(mm)</th>
+                            <th>风力(级)</th>
+                            <th>天气类型</th>
+                        </tr>
+                    </thead>
+                    <tbody id="weatherTable"></tbody>
+                </table>
+            </div>
+            <div class="pagination" id="pagination"></div>
+        </div>
+    </div>
+    <div class="modal-overlay" id="cleaningModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>🧹 数据清洗</h3>
+                <button class="modal-close" onclick="closeModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <p>数据清洗将检测并处理以下问题：</p>
+                <ul style="margin-left: 20px; margin-bottom: 16px; color: #718096;">
+                    <li>缺失值检测与处理</li>
+                    <li>重复数据检测与删除</li>
+                    <li>异常值检测（气温、湿度等）</li>
+                    <li>格式规范化</li>
+                </ul>
+                <div class="cleaning-stats" id="cleaningStats"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-modal secondary" onclick="closeModal()">取消</button>
+                <button class="btn-modal primary" onclick="performCleaning()">执行清洗</button>
+            </div>
+        </div>
+    </div>
+    <div class="toast" id="toast">
+        <span id="toastIcon">✓</span>
+        <span id="toastMessage">操作成功</span>
+    </div>
+    <script>
+        const weatherData = [
+            {city:"福州",date:"2025-01-05",temp:12.5,humidity:68,rain:0,wind:2,weatherType:"晴"},
+            {city:"厦门",date:"2025-01-05",temp:15.2,humidity:72,rain:2.3,wind:4,weatherType:"小雨"},
+            {city:"泉州",date:"2025-07-12",temp:32.8,humidity:85,rain:15.6,wind:6,weatherType:"暴雨"},
+            {city:"南平",date:"2025-12-20",temp:3.2,humidity:55,rain:8.2,wind:3,weatherType:"小雪"},
+            {city:"福州",date:"2025-07-15",temp:35.1,humidity:78,rain:0,wind:1,weatherType:"晴"},
+            {city:"宁德",date:"2025-04-08",temp:22.3,humidity:75,rain:5.1,wind:5,weatherType:"多云"},
+            {city:"漳州",date:"2025-08-22",temp:34.6,humidity:90,rain:22.8,wind:7,weatherType:"暴雨"},
+            {city:"三明",date:"2025-11-10",temp:16.7,humidity:62,rain:0,wind:2,weatherType:"多云"},
+            {city:"龙岩",date:"2025-02-14",temp:10.1,humidity:59,rain:1.5,wind:3,weatherType:"小雨"},
+            {city:"莆田",date:"2025-09-03",temp:28.9,humidity:81,rain:0,wind:6,weatherType:"晴"},
+            {city:"福州",date:"2025-02-10",temp:14.2,humidity:70,rain:0,wind:3,weatherType:"多云"},
+            {city:"厦门",date:"2025-06-18",temp:29.5,humidity:83,rain:8.9,wind:5,weatherType:"中雨"},
+            {city:"泉州",date:"2025-03-22",temp:19.6,humidity:66,rain:0,wind:2,weatherType:"晴"},
+            {city:"南平",date:"2025-08-05",temp:31.4,humidity:88,rain:12.3,wind:8,weatherType:"大雨"},
+            {city:"宁德",date:"2025-10-11",temp:21.7,humidity:71,rain:0,wind:4,weatherType:"多云"},
+            {city:"漳州",date:"2025-01-28",temp:13.8,humidity:65,rain:0,wind:2,weatherType:"晴"},
+            {city:"三明",date:"2025-06-30",temp:30.2,humidity:80,rain:6.7,wind:5,weatherType:"小雨"},
+            {city:"龙岩",date:"2025-08-16",temp:33.5,humidity:86,rain:18.1,wind:9,weatherType:"暴雨"},
+            {city:"莆田",date:"2025-12-05",temp:7.6,humidity:52,rain:4.3,wind:4,weatherType:"小雪"},
+            {city:"福州",date:"2025-04-25",temp:24.1,humidity:74,rain:3.2,wind:3,weatherType:"多云"},
+            {city:"厦门",date:"2025-11-22",temp:18.3,humidity:67,rain:0,wind:2,weatherType:"晴"},
+            {city:"泉州",date:"2025-12-10",temp:9.5,humidity:58,rain:0,wind:3,weatherType:"多云"},
+            {city:"南平",date:"2025-03-06",temp:16.8,humidity:63,rain:2.1,wind:4,weatherType:"小雨"},
+            {city:"宁德",date:"2025-07-28",temp:32.2,humidity:84,rain:25.7,wind:10,weatherType:"特大暴雨"},
+            {city:"漳州",date:"2025-10-02",temp:23.5,humidity:76,rain:0,wind:3,weatherType:"晴"},
+            {city:"三明",date:"2025-02-28",temp:15.3,humidity:69,rain:0,wind:2,weatherType:"多云"},
+            {city:"龙岩",date:"2025-05-14",temp:26.8,humidity:79,rain:7.5,wind:6,weatherType:"中雨"},
+            {city:"莆田",date:"2025-06-09",temp:27.4,humidity:82,rain:0,wind:5,weatherType:"多云"},
+            {city:"福州",date:"2025-10-26",temp:20.6,humidity:68,rain:0,wind:2,weatherType:"晴"},
+            {city:"厦门",date:"2025-03-15",temp:20.1,humidity:71,rain:4.8,wind:4,weatherType:"小雨"},
+            {city:"泉州",date:"2025-11-03",temp:17.2,humidity:64,rain:0,wind:3,weatherType:"多云"},
+            {city:"南平",date:"2025-04-19",temp:21.5,humidity:73,rain:0,wind:2,weatherType:"晴"},
+            {city:"宁德",date:"2025-12-15",temp:6.3,humidity:51,rain:6.9,wind:5,weatherType:"小雪"},
+            {city:"漳州",date:"2025-05-27",temp:25.9,humidity:77,rain:9.2,wind:6,weatherType:"大雨"},
+            {city:"三明",date:"2025-09-17",temp:26.4,humidity:75,rain:0,wind:4,weatherType:"多云"},
+            {city:"龙岩",date:"2025-01-18",temp:11.3,humidity:60,rain:0,wind:2,weatherType:"晴"},
+            {city:"莆田",date:"2025-04-12",temp:21.8,humidity:73,rain:2.6,wind:3,weatherType:"多云"},
+            {city:"福州",date:"2025-12-08",temp:8.7,humidity:54,rain:0,wind:2,weatherType:"晴"},
+            {city:"泉州",date:"2025-08-30",temp:33.6,humidity:87,rain:19.2,wind:8,weatherType:"暴雨"},
+            {city:"龙岩",date:"2025-10-19",temp:19.4,humidity:66,rain:0,wind:3,weatherType:"多云"},
+            {city:"宁德",date:"2025-02-22",temp:13.6,humidity:67,rain:1.2,wind:3,weatherType:"小雨"},
+            {city:"三明",date:"2025-07-07",temp:31.9,humidity:82,rain:11.5,wind:7,weatherType:"大雨"}
+        ];
+        let currentPage = 1; 
+        const pageSize = 10; 
+        let filteredData = [...weatherData];
+        function getWeatherIcon(type) {
+            if(type.includes("晴")) return "☀️";
+            if(type.includes("多云")) return "☁️";
+            if(type.includes("小雨")||type.includes("中雨")) return "🌧️";
+            if(type.includes("大雨")||type.includes("暴雨")||type.includes("特大暴雨")) return "⛈️";
+            if(type.includes("雪")) return "❄️";
+            return "🌤️";
+        }
+        function getWeatherClass(type) {
+            if(type.includes("晴")) return "weather-sunny";
+            if(type.includes("多云")) return "weather-cloudy";
+            if(type.includes("小雨")||type.includes("中雨")) return "weather-rainy";
+            if(type.includes("大雨")||type.includes("暴雨")||type.includes("特大暴雨")) return "weather-storm";
+            if(type.includes("雪")) return "weather-snow";
+            return "weather-cloudy";
+        }
+        function getTempClass(temp) {
+            if(temp > 30) return "temp-high";
+            if(temp < 10) return "temp-low";
+            return "temp-normal";
+        }
+        function getSeason(month) {
+            if(month >= 3 && month <= 5) return "春";
+            if(month >= 6 && month <= 8) return "夏";
+            if(month >= 9 && month <= 11) return "秋";
+            return "冬";
+        }
+        function renderTable(data) {
+            const tbody = document.getElementById("weatherTable");
+            tbody.innerHTML = "";
+            if(data.length === 0) {
+                tbody.innerHTML = `
+                    <tr><td colspan="7">
+                        <div class="empty-state">
+                            <div class="icon">🔍</div>
+                            <h3>未找到匹配的数据</h3>
+                            <p>请尝试调整筛选条件</p>
+                        </div>
+                    </td></tr>
+                `;
+                return;
+            }
+            const start = (currentPage-1)*pageSize;
+            const end = start + pageSize;
+            const pageData = data.slice(start, end);
+            pageData.forEach((item, index) => {
+                const row = document.createElement("tr");
+                row.style.animation = `fadeInRow 0.3s ease-out ${index * 0.05}s both`;
+                row.innerHTML = `
+                    <td><strong>${item.city}</strong></td>
+                    <td>${item.date}</td>
+                    <td><span class="${getTempClass(item.temp)}">${item.temp}°C</span></td>
+                    <td>${item.humidity}%</td>
+                    <td>${item.rain}mm</td>
+                    <td>${item.wind}级</td>
+                    <td><span class="weather-badge ${getWeatherClass(item.weatherType)}">${getWeatherIcon(item.weatherType)} ${item.weatherType}</span></td>
+                `;
+                tbody.appendChild(row);
+            });
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes fadeInRow {
+                    from { opacity: 0; transform: translateY(10px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+        function renderPagination(data) {
+            const pagination = document.getElementById("pagination");
+            pagination.innerHTML = "";
+            const totalPages = Math.ceil(data.length / pageSize);
+            if(totalPages <= 1) return;
+            const createPageBtn = (num, text) => {
+                const btn = document.createElement("button");
+                btn.textContent = text || num;
+                btn.className = num === currentPage ? "active" : "";
+                btn.onclick = () => { currentPage = num; renderTable(filteredData); renderPagination(filteredData); };
+                return btn;
+            };
+            if(currentPage > 1) {
+                const prevBtn = document.createElement("button");
+                prevBtn.textContent = "←";
+                prevBtn.onclick = () => { currentPage--; renderTable(filteredData); renderPagination(filteredData); };
+                pagination.appendChild(prevBtn);
+            }
+            if(totalPages <= 7) {
+                for(let i=1; i<=totalPages; i++) {
+                    pagination.appendChild(createPageBtn(i));
+                }
+            } else {
+                if(currentPage <= 3) {
+                    for(let i=1; i<=4; i++) pagination.appendChild(createPageBtn(i));
+                    pagination.appendChild(document.createElement("button")).textContent = "...";
+                    pagination.appendChild(createPageBtn(totalPages));
+                } else if(currentPage >= totalPages - 2) {
+                    pagination.appendChild(createPageBtn(1));
+                    pagination.appendChild(document.createElement("button")).textContent = "...";
+                    for(let i=totalPages-3; i<=totalPages; i++) pagination.appendChild(createPageBtn(i));
+                } else {
+                    pagination.appendChild(createPageBtn(1));
+                    pagination.appendChild(document.createElement("button")).textContent = "...";
+                    for(let i=currentPage-1; i<=currentPage+1; i++) pagination.appendChild(createPageBtn(i));
+                    pagination.appendChild(document.createElement("button")).textContent = "...";
+                    pagination.appendChild(createPageBtn(totalPages));
+                }
+            }
+            if(currentPage < totalPages) {
+                const nextBtn = document.createElement("button");
+                nextBtn.textContent = "→";
+                nextBtn.onclick = () => { currentPage++; renderTable(filteredData); renderPagination(filteredData); };
+                pagination.appendChild(nextBtn);
+            }
+        }
+        function filterData() {
+            const city = document.getElementById("searchCity").value.toLowerCase();
+            const weather = document.getElementById("filterWeather").value;
+            const season = document.getElementById("filterSeason").value;
+            filteredData = weatherData.filter(item => {
+                const matchCity = !city || item.city.toLowerCase().includes(city);
+                const matchWeather = !weather || item.weatherType === weather;
+                const month = parseInt(item.date.split('-')[1]);
+                const matchSeason = !season || getSeason(month) === season;
+                return matchCity && matchWeather && matchSeason;
+            });
+            currentPage = 1;
+            document.getElementById("resultCount").textContent = `共 ${filteredData.length} 条记录`;
+            renderTable(filteredData);
+            renderPagination(filteredData);
+        }
+        function resetFilters() {
+            document.getElementById("searchCity").value = "";
+            document.getElementById("filterWeather").value = "";
+            document.getElementById("filterSeason").value = "";
+            filterData();
+        }
+        document.getElementById("searchCity").addEventListener("keyup", function(e) {
+            if(e.key === "Enter") filterData();
+        });
+        document.getElementById("csvFile").addEventListener("change", handleFileUpload);
+        filterData();
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const csvData = e.target.result;
+                parseCSV(csvData);
+            };
+            reader.readAsText(file, 'UTF-8');
+        }
+        function parseCSV(csvText) {
+            const lines = csvText.split('\n').filter(line => line.trim());
+            if (lines.length === 0) {
+                showToast('error', 'CSV文件为空');
+                return;
+            }
+            const headers = lines[0].split(',').map(h => h.trim());
+            const requiredFields = ['city', 'date', 'temp', 'humidity', 'rain', 'wind', 'weatherType'];
+            const headerIndices = requiredFields.map(field => headers.findIndex(h => h.toLowerCase().includes(field.toLowerCase())));
+            if (headerIndices.some(i => i === -1)) {
+                showToast('error', 'CSV格式不正确');
+                return;
+            }
+            const newData = [];
+            for (let i = 1; i < lines.length; i++) {
+                const values = lines[i].split(',');
+                const row = {
+                    city: values[headerIndices[0]]?.trim() || '',
+                    date: values[headerIndices[1]]?.trim() || '',
+                    temp: parseFloat(values[headerIndices[2]]?.trim()) || 0,
+                    humidity: parseInt(values[headerIndices[3]]?.trim()) || 0,
+                    rain: parseFloat(values[headerIndices[4]]?.trim()) || 0,
+                    wind: parseInt(values[headerIndices[5]]?.trim()) || 0,
+                    weatherType: values[headerIndices[6]]?.trim() || ''
+                };
+                if (row.city && row.date && row.weatherType) {
+                    newData.push(row);
+                }
+            }
+            if (newData.length > 0) {
+                weatherData.push(...newData);
+                filteredData = [...weatherData];
+                currentPage = 1;
+                updateStats();
+                renderTable(filteredData);
+                renderPagination(filteredData);
+                showToast('success', `成功导入 ${newData.length} 条数据`);
+            } else {
+                showToast('warning', '未找到有效数据');
+            }
+            document.getElementById("csvFile").value = '';
+        }
+        function exportToCSV() {
+            const headers = ['city', 'date', 'temp', 'humidity', 'rain', 'wind', 'weatherType'];
+            const csvContent = [headers.join(','), ...filteredData.map(row => headers.map(h => row[h]).join(','))].join('\n');
+            const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', `weather_data_${new Date().toISOString().split('T')[0]}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            showToast('success', 'CSV文件导出成功');
+        }
+        function showCleaningModal() {
+            const stats = analyzeData(weatherData);
+            let statsHtml = `
+                <div class="cleaning-stat-item"><span class="label">总记录数</span><span class="value">${stats.total}</span></div>
+                <div class="cleaning-stat-item"><span class="label">重复记录数</span><span class="value ${stats.duplicates > 0 ? 'danger' : 'success'}">${stats.duplicates}</span></div>
+                <div class="cleaning-stat-item"><span class="label">缺失值记录</span><span class="value ${stats.missing > 0 ? 'warning' : 'success'}">${stats.missing}</span></div>
+                <div class="cleaning-stat-item"><span class="label">异常气温值</span><span class="value ${stats.invalidTemp > 0 ? 'warning' : 'success'}">${stats.invalidTemp}</span></div>
+                <div class="cleaning-stat-item"><span class="label">异常湿度值</span><span class="value ${stats.invalidHumidity > 0 ? 'warning' : 'success'}">${stats.invalidHumidity}</span></div>
+            `;
+            document.getElementById('cleaningStats').innerHTML = statsHtml;
+            document.getElementById('cleaningModal').classList.add('show');
+        }
+        function closeModal() {
+            document.getElementById('cleaningModal').classList.remove('show');
+        }
+        function analyzeData(data) {
+            let duplicates = 0;
+            let missing = 0;
+            let invalidTemp = 0;
+            let invalidHumidity = 0;
+            const seen = new Set();
+            data.forEach(row => {
+                const key = `${row.city}-${row.date}`;
+                if (seen.has(key)) duplicates++;
+                seen.add(key);
+                if (!row.city || !row.date || !row.weatherType) missing++;
+                if (row.temp < -40 || row.temp > 50) invalidTemp++;
+                if (row.humidity < 0 || row.humidity > 100) invalidHumidity++;
+            });
+            return { total: data.length, duplicates, missing, invalidTemp, invalidHumidity };
+        }
+        function performCleaning() {
+            const originalCount = weatherData.length;
+            const seen = new Set();
+            const cleaned = weatherData.filter(row => {
+                const key = `${row.city}-${row.date}`;
+                if (seen.has(key)) return false;
+                seen.add(key);
+                if (!row.city || !row.date || !row.weatherType) return false;
+                if (row.temp < -40 || row.temp > 50) return false;
+                if (row.humidity < 0 || row.humidity > 100) return false;
+                return true;
+            });
+            const removed = originalCount - cleaned.length;
+            weatherData.length = 0;
+            weatherData.push(...cleaned);
+            filteredData = [...weatherData];
+            currentPage = 1;
+            updateStats();
+            renderTable(filteredData);
+            renderPagination(filteredData);
+            closeModal();
+            showToast('success', `清洗完成！共移除 ${removed} 条无效数据`);
+        }
+        function updateStats() {
+            const avgTemp = (weatherData.reduce((sum, row) => sum + row.temp, 0) / weatherData.length).toFixed(1);
+            const avgHumidity = Math.round(weatherData.reduce((sum, row) => sum + row.humidity, 0) / weatherData.length);
+            const avgRain = (weatherData.reduce((sum, row) => sum + row.rain, 0) / weatherData.length).toFixed(1);
+            document.querySelectorAll('.stat-card .value')[0].textContent = weatherData.length;
+            document.querySelectorAll('.stat-card .value')[1].textContent = `${avgTemp}°C`;
+            document.querySelectorAll('.stat-card .value')[2].textContent = `${avgHumidity}%`;
+            document.querySelectorAll('.stat-card .value')[3].textContent = `${avgRain}mm`;
+            document.getElementById("resultCount").textContent = `共 ${weatherData.length} 条记录`;
+        }
+        function showToast(type, message) {
+            const toast = document.getElementById('toast');
+            const icon = document.getElementById('toastIcon');
+            const toastMessage = document.getElementById('toastMessage');
+            toast.className = `toast show ${type}`;
+            icon.textContent = type === 'success' ? '✓' : type === 'error' ? '✗' : '⚠️';
+            toastMessage.textContent = message;
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+        document.getElementById('cleaningModal').addEventListener('click', function(e) {
+            if (e.target === this) closeModal();
+        });
+    </script>
+</body>
+</html>
