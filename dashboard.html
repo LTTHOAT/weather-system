@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
@@ -582,6 +582,42 @@
         .empty-state p {
             font-size: 14px;
         }
+        .charts-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+        .chart-card {
+            background: var(--card-bg);
+            border-radius: 20px;
+            padding: 24px;
+            box-shadow: var(--shadow-sm);
+            transition: all var(--transition-normal);
+        }
+        .chart-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-md);
+        }
+        .chart-card h3 {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .chart-container {
+            position: relative;
+            height: 280px;
+        }
+        .chart-card.full-width {
+            grid-column: 1 / -1;
+        }
+        .chart-card.half-width {
+            grid-column: span 1;
+        }
         @media (max-width: 768px) {
             .header {
                 padding: 16px 20px;
@@ -657,6 +693,38 @@
                 <div class="value">7.2mm</div>
                 <div class="label">平均降雨量</div>
                 <div class="trend up">↑ 较上周 +2.1mm</div>
+            </div>
+        </div>
+        <div class="charts-section">
+            <div class="chart-card">
+                <h3>📈 气温趋势分析</h3>
+                <div class="chart-container">
+                    <canvas id="tempTrendChart"></canvas>
+                </div>
+            </div>
+            <div class="chart-card">
+                <h3>🌤️ 天气类型分布</h3>
+                <div class="chart-container">
+                    <canvas id="weatherDistChart"></canvas>
+                </div>
+            </div>
+            <div class="chart-card">
+                <h3>🏙️ 各城市平均气温对比</h3>
+                <div class="chart-container">
+                    <canvas id="cityTempChart"></canvas>
+                </div>
+            </div>
+            <div class="chart-card">
+                <h3>💧 各城市平均湿度对比</h3>
+                <div class="chart-container">
+                    <canvas id="cityHumidityChart"></canvas>
+                </div>
+            </div>
+            <div class="chart-card full-width">
+                <h3>🌧️ 各城市月降雨量分布</h3>
+                <div class="chart-container">
+                    <canvas id="cityRainChart"></canvas>
+                </div>
             </div>
         </div>
         <div class="search-section">
@@ -757,6 +825,7 @@
         <span id="toastIcon">✓</span>
         <span id="toastMessage">操作成功</span>
     </div>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script>
         const weatherData = [
             {city:"福州",date:"2025-01-05",temp:12.5,humidity:68,rain:0,wind:2,weatherType:"晴"},
@@ -945,7 +1014,200 @@
             if(e.key === "Enter") filterData();
         });
         document.getElementById("csvFile").addEventListener("change", handleFileUpload);
-        filterData();
+        let tempTrendChart, weatherDistChart, cityTempChart, cityHumidityChart, cityRainChart;
+        window.addEventListener('DOMContentLoaded', () => {
+            initCharts();
+            filterData();
+        });
+        function initCharts() {
+            const chartDefaults = {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { padding: 20, font: { size: 12 } }
+                    }
+                }
+            };
+            const tempCtx = document.getElementById('tempTrendChart').getContext('2d');
+            const sortedData = [...weatherData].sort((a, b) => new Date(a.date) - new Date(b.date));
+            const labels = sortedData.map(d => `${d.city} ${d.date.slice(5)}`);
+            tempTrendChart = new Chart(tempCtx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '气温 (°C)',
+                        data: sortedData.map(d => d.temp),
+                        borderColor: '#667eea',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 4,
+                        pointHoverRadius: 6
+                    }]
+                },
+                options: {
+                    ...chartDefaults,
+                    scales: {
+                        y: { beginAtZero: false, grid: { color: 'rgba(0,0,0,0.05)' } },
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
+            const weatherCounts = {};
+            weatherData.forEach(d => {
+                weatherCounts[d.weatherType] = (weatherCounts[d.weatherType] || 0) + 1;
+            });
+            const weatherColors = {
+                '晴': '#FFB347', '多云': '#87CEEB', '小雨': '#77DD77', '中雨': '#59B4D1',
+                '大雨': '#4A90D9', '暴雨': '#6B5B95', '特大暴雨': '#9B59B6', '小雪': '#B0E0E6'
+            };
+            const weatherCtx = document.getElementById('weatherDistChart').getContext('2d');
+            weatherDistChart = new Chart(weatherCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(weatherCounts),
+                    datasets: [{
+                        data: Object.values(weatherCounts),
+                        backgroundColor: Object.keys(weatherCounts).map(k => weatherColors[k] || '#999'),
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    ...chartDefaults,
+                    cutout: '60%'
+                }
+            });
+            const cities = [...new Set(weatherData.map(d => d.city))];
+            const cityAvgTemp = cities.map(c => {
+                const cityData = weatherData.filter(d => d.city === c);
+                return (cityData.reduce((s, d) => s + d.temp, 0) / cityData.length).toFixed(1);
+            });
+            const cityTempCtx = document.getElementById('cityTempChart').getContext('2d');
+            cityTempChart = new Chart(cityTempCtx, {
+                type: 'bar',
+                data: {
+                    labels: cities,
+                    datasets: [{
+                        label: '平均气温',
+                        data: cityAvgTemp,
+                        backgroundColor: cities.map((_, i) => `rgba(102, 126, 234, ${0.5 + (i % 3) * 0.2})`),
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    ...chartDefaults,
+                    scales: {
+                        y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' } },
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
+            const cityAvgHumidity = cities.map(c => {
+                const cityData = weatherData.filter(d => d.city === c);
+                return Math.round(cityData.reduce((s, d) => s + d.humidity, 0) / cityData.length);
+            });
+            const cityHumidityCtx = document.getElementById('cityHumidityChart').getContext('2d');
+            cityHumidityChart = new Chart(cityHumidityCtx, {
+                type: 'bar',
+                data: {
+                    labels: cities,
+                    datasets: [{
+                        label: '平均湿度 (%)',
+                        data: cityAvgHumidity,
+                        backgroundColor: cities.map((_, i) => `rgba(72, 187, 120, ${0.5 + (i % 3) * 0.2})`),
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    ...chartDefaults,
+                    scales: {
+                        y: { beginAtZero: true, max: 100, grid: { color: 'rgba(0,0,0,0.05)' } },
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
+            const cityRainData = cities.map(c => {
+                const cityData = weatherData.filter(d => d.city === c);
+                return (cityData.reduce((s, d) => s + d.rain, 0) / cityData.length).toFixed(1);
+            });
+            const cityRainCtx = document.getElementById('cityRainChart').getContext('2d');
+            cityRainChart = new Chart(cityRainCtx, {
+                type: 'bar',
+                data: {
+                    labels: cities,
+                    datasets: [{
+                        label: '平均降雨量 (mm)',
+                        data: cityRainData,
+                        backgroundColor: cities.map((_, i) => `rgba(237, 137, 54, ${0.5 + (i % 3) * 0.2})`),
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    ...chartDefaults,
+                    scales: {
+                        y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' } },
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
+        }
+        function updateCharts() {
+            if (!tempTrendChart) return;
+            const sortedData = [...filteredData].sort((a, b) => new Date(a.date) - new Date(b.date));
+            const labels = sortedData.map(d => `${d.city} ${d.date.slice(5)}`);
+            tempTrendChart.data.labels = labels;
+            tempTrendChart.data.datasets[0].data = sortedData.map(d => d.temp);
+            tempTrendChart.update();
+            const weatherCounts = {};
+            filteredData.forEach(d => {
+                weatherCounts[d.weatherType] = (weatherCounts[d.weatherType] || 0) + 1;
+            });
+            weatherDistChart.data.labels = Object.keys(weatherCounts);
+            weatherDistChart.data.datasets[0].data = Object.values(weatherCounts);
+            weatherDistChart.update();
+            const cities = [...new Set(filteredData.map(d => d.city))];
+            const cityAvgTemp = cities.map(c => {
+                const cityData = filteredData.filter(d => d.city === c);
+                return (cityData.reduce((s, d) => s + d.temp, 0) / cityData.length).toFixed(1);
+            });
+            cityTempChart.data.labels = cities;
+            cityTempChart.data.datasets[0].data = cityAvgTemp;
+            cityTempChart.update();
+            const cityAvgHumidity = cities.map(c => {
+                const cityData = filteredData.filter(d => d.city === c);
+                return Math.round(cityData.reduce((s, d) => s + d.humidity, 0) / cityData.length);
+            });
+            cityHumidityChart.data.labels = cities;
+            cityHumidityChart.data.datasets[0].data = cityAvgHumidity;
+            cityHumidityChart.update();
+            const cityRainData = cities.map(c => {
+                const cityData = filteredData.filter(d => d.city === c);
+                return (cityData.reduce((s, d) => s + d.rain, 0) / cityData.length).toFixed(1);
+            });
+            cityRainChart.data.labels = cities;
+            cityRainChart.data.datasets[0].data = cityRainData;
+            cityRainChart.update();
+        }
+        function filterData() {
+            const city = document.getElementById("searchCity").value.toLowerCase();
+            const weather = document.getElementById("filterWeather").value;
+            const season = document.getElementById("filterSeason").value;
+            filteredData = weatherData.filter(item => {
+                const matchCity = !city || item.city.toLowerCase().includes(city);
+                const matchWeather = !weather || item.weatherType === weather;
+                const month = parseInt(item.date.split('-')[1]);
+                const matchSeason = !season || getSeason(month) === season;
+                return matchCity && matchWeather && matchSeason;
+            });
+            currentPage = 1;
+            document.getElementById("resultCount").textContent = `共 ${filteredData.length} 条记录`;
+            renderTable(filteredData);
+            renderPagination(filteredData);
+            updateCharts();
+        }
         function handleFileUpload(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -990,6 +1252,7 @@
                 filteredData = [...weatherData];
                 currentPage = 1;
                 updateStats();
+                updateCharts();
                 renderTable(filteredData);
                 renderPagination(filteredData);
                 showToast('success', `成功导入 ${newData.length} 条数据`);
@@ -1061,6 +1324,7 @@
             filteredData = [...weatherData];
             currentPage = 1;
             updateStats();
+            updateCharts();
             renderTable(filteredData);
             renderPagination(filteredData);
             closeModal();
